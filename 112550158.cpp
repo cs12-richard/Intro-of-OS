@@ -102,6 +102,7 @@ int main() {
                 argv.back() = nullptr;
 
                 execvp(argv[0], argv.data());
+                exit(1);
             }
 
             pid_t pid2 = fork();
@@ -120,6 +121,7 @@ int main() {
                 argv.back() = nullptr;
 
                 execvp(argv[0], argv.data());
+                exit(1);
             }
 
             close(pipefd[0]);
@@ -153,6 +155,7 @@ int main() {
                 argv.back() = nullptr;
 
                 execvp(argv[0], argv.data());
+                exit(1);
             } else {
                 if (!background) {
                     waitpid(pid, nullptr, 0);
