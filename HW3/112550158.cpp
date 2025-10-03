@@ -67,7 +67,7 @@ void merge(int* arr, int start, int mid, int end) {
     free(right_array);
 }
 
-pthread_mutex_t mutex;
+pthread_mutex_t global_mutex;
 sem_t job_semaphore;
 sem_t complete_semaphore;
 bool done = false;
@@ -80,14 +80,14 @@ void* worker_thread(void* arg) {
     int thread_id = *(int*)arg;
     while (1) {  // 無限迴圈，直到 done_flag
         sem_wait(&job_semaphore);  // 等待新工作信號
-        pthread_mutex_lock(&mutex);
+        pthread_mutex_lock(&global_mutex);
         if (done) {  // 檢查終止旗標
-            pthread_mutex_unlock(&mutex);
+            pthread_mutex_unlock(&global_mutex);
             break;
         }
         Job current_job = job_queue.front();  // 取出前端
         job_queue.erase(job_queue.begin());  // 移除前端
-        pthread_mutex_unlock(&mutex);
+        pthread_mutex_unlock(&global_mutex);
 
         int start_index, end_index, mid_index, subarray_span, left_half_length;
         if (current_job.type == 0) {  // 排序工作 (Bubble Sort)
@@ -138,9 +138,9 @@ void* worker_thread(void* arg) {
         } else {
             current_level = current_job.level;  // 合併用 job level
         }
-        pthread_mutex_lock(&mutex);
+        pthread_mutex_lock(&global_mutex);
         sorted_status[current_level][current_job.pos] = true;  // 直接標記已排序
-        pthread_mutex_unlock(&mutex);
+        pthread_mutex_unlock(&global_mutex);
         sem_post(&complete_semaphore);  // 通知派遣者
     }
     return NULL;
@@ -173,7 +173,7 @@ int main() {
 
         done = false;
 
-        pthread_mutex_init(&mutex, NULL);
+        pthread_mutex_init(&global_mutex, NULL);
         sem_init(&job_semaphore, 0, 0);
         sem_init(&complete_semaphore, 0, 0);
 
@@ -187,7 +187,7 @@ int main() {
         gettimeofday(&start_time, NULL);  // 開始計時
 
         // 插入 8 個初始排序工作
-        pthread_mutex_lock(&mutex);
+        pthread_mutex_lock(&global_mutex);
         for (int i = 0; i < 8; i++) {
             Job initial_job;
             initial_job.type = 0;  // 排序
@@ -195,7 +195,7 @@ int main() {
             initial_job.pos = i;
             job_queue.push_back(initial_job);  // 直接加入尾端
         }
-        pthread_mutex_unlock(&mutex);
+        pthread_mutex_unlock(&global_mutex);
         for (int i = 0; i < 8; i++) {
             sem_post(&job_semaphore);  // 喚醒工作執行緒 (8 次)
         }
@@ -204,7 +204,7 @@ int main() {
         int completed_jobs = 0;
         while (completed_jobs < 15) {
             sem_wait(&complete_semaphore);  // 等待完成信號
-            pthread_mutex_lock(&mutex);
+            pthread_mutex_lock(&global_mutex);
             completed_jobs++;  // 遞增完成計數
 
             // 檢查並產生新合併工作 (level 1~3)
@@ -233,7 +233,7 @@ int main() {
                 }
             }
 
-            pthread_mutex_unlock(&mutex);
+            pthread_mutex_unlock(&global_mutex);
         }
 
         gettimeofday(&end_time, NULL);
@@ -246,9 +246,9 @@ int main() {
              << fixed << setprecision(3) << execution_time_ms << " ms" << endl;
 
         // 終止工作執行緒
-        pthread_mutex_lock(&mutex);
+        pthread_mutex_lock(&global_mutex);
         done = true;
-        pthread_mutex_unlock(&mutex);
+        pthread_mutex_unlock(&global_mutex);
         for (int j = 0; j < i; j++) {
             sem_post(&job_semaphore);  // 喚醒檢查 done
         }
@@ -257,7 +257,7 @@ int main() {
         }
 
         // 清理同步原語
-        pthread_mutex_destroy(&mutex);
+        pthread_mutex_destroy(&global_mutex);
         sem_destroy(&job_semaphore);
         sem_destroy(&complete_semaphore);
 
