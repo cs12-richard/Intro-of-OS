@@ -68,6 +68,8 @@ void merge(int* arr, int start, int mid, int end) {
         right_index++;
         merge_index++;
     }
+    free(left_array);
+    free(right_array);
 }
 
 void* worker_thread(void* arg) {
@@ -241,12 +243,13 @@ int main() {
         sem_destroy(&job_semaphore);
         sem_destroy(&complete_semaphore);
 
-        char output_filename[8];
+        char output_filename[20];
         sprintf(output_filename, "output_%d.txt", i);
         FILE* output_file = fopen(output_filename, "w");
         for (int j = 0; j < total; j++) {
             fprintf(output_file, "%d ", cur_array[j]);
         }
         fclose(output_file);
+        free(cur_array);
     }
 }
